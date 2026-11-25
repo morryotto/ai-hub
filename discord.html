@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Server Master-Kit | Интерактивный симулятор</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dc-bg-darkest: #1e1f22;
+            --dc-sidebar: #2b2d31;
+            --dc-chat: #313338;
+            --dc-text: #dbdee1;
+            --dc-heading: #f2f3f5;
+            --dc-muted: #949ba4;
+            --dc-primary: #5865f2;
+            --dc-primary-hover: #4752c4;
+            --dc-green: #23a55a;
+            --dc-border: #3f4147;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--dc-bg-darkest);
+            color: var(--dc-text);
+            padding: 24px;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto 28px auto;
+        }
+        .badge {
+            background: rgba(88, 101, 242, 0.2);
+            color: #818cf8;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 12px;
+            border: 1px solid rgba(88, 101, 242, 0.3);
+        }
+        h1 {
+            color: var(--dc-heading);
+            font-size: 30px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: var(--dc-muted);
+            font-size: 14px;
+        }
+
+        /* Главный контейнер приложения */
+        .discord-app {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 310px 1fr;
+            background: var(--dc-chat);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 16px 45px rgba(0,0,0,0.6);
+            border: 1px solid var(--dc-border);
+            height: 720px;
+        }
+
+        /* Левая колонка: Каналы (Discord Сайдбар) */
+        .dc-channels {
+            background: var(--dc-sidebar);
+            padding: 16px 10px;
+            border-right: 1px solid #232428;
+            overflow-y: auto;
+            height: 100%;
+        }
+        .server-header {
+            font-weight: 800;
+            color: var(--dc-heading);
+            font-size: 15px;
+            padding: 0 8px 14px 8px;
+            border-bottom: 1px solid #35373c;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cat-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--dc-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 16px 8px 6px 8px;
+        }
+        .channel-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 13.5px;
+            color: var(--dc-muted);
+            cursor: pointer;
+            transition: 0.15s;
+            margin-bottom: 2px;
+            user-select: none;
+        }
+        .channel-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--dc-heading);
+        }
+        .channel-item.active {
+            background: rgba(88, 101, 242, 0.2);
+            color: #fff;
+            font-weight: 600;
+        }
+        .channel-item.voice {
+            color: #b5bac1;
+        }
+        .copy-pill {
+            font-size: 10px;
+            background: #1e1f22;
+            color: #949ba4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: 0.15s;
+        }
+        .channel-item:hover .copy-pill {
+            opacity: 1;
+        }
+
+        /* Правая колонка: Чат и контент */
+        .dc-content {
+            padding: 20px 24px;
+            overflow-y: auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--dc-border);
+            padding-bottom: 12px;
+        }
+        .channel-current-name {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--dc-heading);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-controls {
+            display: flex;
+            gap: 8px;
+        }
+        .tab-btn {
+            background: #2b2d31;
+            color: var(--dc-muted);
+            border: 1px solid #383a40;
+            font-size: 12.5px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .tab-btn.active, .tab-btn:hover {
+            background: var(--dc-primary);
+            color: #fff;
+            border-color: var(--dc-primary);
+        }
+
+        /* Embed сообщение Discord */
+        .embed-card {
+            background: #2b2d31;
+            border-left: 4px solid var(--dc-primary);
+            border-radius: 4px 10px 10px 4px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .embed-header {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--dc-heading);
+            margin-bottom: 10px;
+        }
+        .embed-body {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #dbdee1;
+            white-space: pre-wrap;
+            background: #1e1f22;
+            padding: 14px;
+            border-radius: 8px;
+            user-select: all;
+            border: 1px solid #282a2e;
+        }
+
+        .channel-info-box {
+            background: rgba(88, 101, 242, 0.08);
+            border: 1px solid rgba(88, 101, 242, 0.2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+        .channel-info-box strong { color: #818cf8; }
+
+        .btn-action {
+            background: var(--dc-primary);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.15s;
+            margin-top: 12px;
+        }
+        .btn-action:hover { background: var(--dc-primary-hover); }
+
+        /* Таблица ролей */
+        .role-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .role-card {
+            background: #2b2d31;
+            padding: 14px 18px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 5px solid;
+        }
+        .role-name { font-weight: 700; font-size: 14.5px; }
+        .role-perms { font-size: 13px; color: var(--dc-muted); }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--dc-green);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 700;
+            display: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="badge">DISCORD SERVER BUILDER</span>
+        <h1>Discord Server Master-Kit</h1>
+        <p class="subtitle">Интерактивный симулятор: кликайте на каналы слева, чтобы посмотреть их готовое оформление и скопировать шаблоны</p>
+    </div>
+
+    <div class="discord-app">
+        <!-- Сайдбар каналов -->
+        <div class="dc-channels">
+            <div class="server-header">
+                <span>🎮</span>
+                <span>Игровой Сервер</span>
+            </div>
+
+            <div class="cat-title">📢 │ ИНФО-ЦЕНТР</div>
+            <div class="channel-item active" onclick="selectChannel('rules', this)">
+                <span># 📌・правила-сервера</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item" onclick="selectChannel('news', this)">
+                <span># 📢・новости-сервера</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item" onclick="selectChannel('welcome', this)">
+                <span># 👋・добро-пожаловать</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item" onclick="selectChannel('boost', this)">
+                <span># 💎・буст-сервера</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+
+            <div class="cat-title">💬 │ ОСНОВНОЙ ЧАТ</div>
+            <div class="channel-item" onclick="selectChannel('general', this)">
+                <span># 💬・общий-чат</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item" onclick="selectChannel('media', this)">
+                <span># 📸・мемы-и-скриншоты</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item" onclick="selectChannel('bot_cmds', this)">
+                <span># 🤖・команды-ботов</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item" onclick="selectChannel('flood', this)">
+                <span># 💭・флудилка</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+
+            <div class="cat-title">🎮 │ ИГРОВЫЕ ЗОНЫ</div>
+            <div class="channel-item" onclick="selectChannel('lfg', this)">
+                <span># 🔍・поиск-тимейтов</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item" onclick="selectChannel('cs_dota', this)">
+                <span># 🎯・cs2-dota-pubg</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item" onclick="selectChannel('mine_roblox', this)">
+                <span># ⛏️・minecraft-roblox</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+
+            <div class="cat-title">🔊 │ ГОЛОСОВЫЕ КОМНАТЫ</div>
+            <div class="channel-item voice" onclick="selectChannel('voice_duo', this)">
+                <span>🔊 🎧・Дуо #1 (лимит: 2)</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item voice" onclick="selectChannel('voice_squad', this)">
+                <span>🔊 👥・Сквад #1 (лимит: 4)</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+            <div class="channel-item voice" onclick="selectChannel('voice_afk', this)">
+                <span>🔊 💤・AFK Комната</span>
+                <span class="copy-pill">Копировать</span>
+            </div>
+        </div>
+
+        <!-- Правая панель: Интерактивный контент -->
+        <div class="dc-content">
+            <div class="top-bar">
+                <div class="channel-current-name" id="currentTitle"># 📌・правила-сервера</div>
+                <div class="tab-controls">
+                    <button class="tab-btn active" id="btnTabChannel" onclick="switchMainTab('channel')">💬 Канал</button>
+                    <button class="tab-btn" id="btnTabRoles" onclick="switchMainTab('roles')">🛡️ Настройка Ролей</button>
+                    <button class="tab-btn" id="btnTabBots" onclick="switchMainTab('bots')">🤖 Боты</button>
+                </div>
+            </div>
+
+            <!-- Режим просмотра канала -->
+            <div id="viewChannel">
+                <div class="channel-info-box" id="channelInfo">
+                    💡 <strong>Назначение:</strong> Главный канал правил сервера. Название скопировано в буфер! Вставьте его в Discord при создании канала.
+                </div>
+
+                <div class="embed-card">
+                    <div class="embed-header">Готовый текст сообщения для этого канала:</div>
+                    <div class="embed-body" id="channelBody"></div>
+                    <button class="btn-action" onclick="copyCurrentTemplate()">📋 Скопировать текст сообщения</button>
+                </div>
+            </div>
+
+            <!-- Режим: Роли -->
+            <div id="viewRoles" style="display:none;">
+                <div class="channel-info-box">
+                    🛡️ <strong>Иерархия ролей:</strong> Создавайте роли сверху вниз в настройках Discord, соблюдая цвета и уровни доступа.
+                </div>
+                <div class="role-grid">
+                    <div class="role-card" style="border-color:#e74c3c;">
+                        <div>
+                            <div class="role-name" style="color:#e74c3c;">👑 Owner (Создатель)</div>
+                            <div class="role-perms">Полный доступ (Администратор)</div>
+                        </div>
+                    </div>
+                    <div class="role-card" style="border-color:#3498db;">
+                        <div>
+                            <div class="role-name" style="color:#3498db;">🛡️ Moderator (Модератор)</div>
+                            <div class="role-perms">Удаление спама, мут участников, кик, бан</div>
+                        </div>
+                    </div>
+                    <div class="role-card" style="border-color:#f1c40f;">
+                        <div>
+                            <div class="role-name" style="color:#f1c40f;">⭐ VIP / Server Booster</div>
+                            <div class="role-perms">Приоритет звука в войсе, внешние эмодзи, доступ в VIP-чат</div>
+                        </div>
+                    </div>
+                    <div class="role-card" style="border-color:#2ecc71;">
+                        <div>
+                            <div class="role-name" style="color:#2ecc71;">🎮 Member (Участник)</div>
+                            <div class="role-perms">Базовый доступ к общению в чатах и войсах</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Режим: Боты -->
+            <div id="viewBots" style="display:none;">
+                <div class="channel-info-box">
+                    🤖 <strong>Рекомендуемые боты:</strong> Добавьте этих ботов для автоматизации и защиты сервера.
+                </div>
+                <div class="embed-card">
+                    <div class="embed-header">1. Carl-bot (carl.gg) — Выдача ролей по клику на эмодзи</div>
+                    <p style="font-size:13px; color:#cbd5e1; margin-bottom:8px;">Введите команду в канале #команды-ботов для настройки:</p>
+                    <div class="embed-body">/reactionrole make</div>
+                </div>
+                <div class="embed-card">
+                    <div class="embed-header">2. MEE6 (mee6.xyz) — Авто-модерация и уровни</div>
+                    <p style="font-size:13px; color:#cbd5e1;">Включите защиту от спам-ссылок и настройте приветственное сообщение.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">✅ Скопировано!</div>
+
+    <script>
+        // База данных контента для каждого канала
+        const channelsData = {
+            rules: {
+                title: "# 📌・правила-сервера",
+                nameToCopy: "📌・правила-сервера",
+                info: "💡 <strong>Назначение:</strong> Канал правил. Название скопировано! Запретите в правах канала отправку сообщений для роли @everyone.",
+                body: `# 📜 ПРАВИЛА НАШЕГО СЕРВЕРА
+> Добро пожаловать! Ознакомьтесь с правилами нашего сообщества:
+
+### 1. ОБЩЕНИЕ И УВАЖЕНИЕ
+> **1.1.** Запрещены оскорбления участников, неадекватное поведение и токсичность.
+> **1.2.** Запрещен спам, флуд одинаковыми сообщениями и массовые теги (@everyone / @here).
+> **1.3.** Контент 18+ (NSFW) строго запрещен во всех открытых каналах.
+
+### 2. ГОЛОСОВЫЕ КАНАЛЫ
+> **2.1.** В голосовых комнатах запрещены неприятные громкие звуки и саундпады без согласия.
+> **2.2.** Уважайте лимиты комнат (Дуо / Сквад) — не перебивайте игроков во время матча.
+
+### 3. БЕЗОПАСНОСТЬ
+> **3.1.** Любая реклама сторонних проектов и спам в ЛС участникам карается перманентным баном!`
+            },
+            news: {
+                title: "# 📢・новости-сервера",
+                nameToCopy: "📢・новости-сервера",
+                info: "💡 <strong>Назначение:</strong> Официальные анонсы и розыгрыши. Право писать должно быть только у Администраторов.",
+                body: `# 📢 ВАЖНЫЙ АНОНС / ОБНОВЛЕНИЕ СЕРВЕРА
+> Всем привет, @everyone! У нас отличные новости:
+> 
+> 🎉 Мы полностью обновили структуру комнат и добавили новых музыкальных ботов!
+> 🎁 Первые 5 активных участников этой недели получат VIP-роль.
+> 
+> Ставьте реакции и делитесь впечатлениями в <#💬・общий-чат>!`
+            },
+            welcome: {
+                title: "# 👋・добро-пожаловать",
+                nameToCopy: "👋・добро-пожаловать",
+                info: "💡 <strong>Назначение:</strong> Канал приветствия. Можно настроить авто-сообщение от бота MEE6 при входе новичка.",
+                body: `# 👋 ДОБРО ПОЖАЛОВАТЬ НА СЕРВЕР!
+> Рады видеть тебя в нашем игровом сообществе!
+> 
+> 📌 Первым делом загляни в <#📌・правила-сервера> — это убережёт от мута.
+> 🔍 Ищешь с кем поиграть? Заходи в <#🔍・поиск-тимейтов>.
+> 💬 Общайся в <#💬・общий-чат> и прокачивай свой уровень активности!`
+            },
+            boost: {
+                title: "# 💎・буст-сервера",
+                nameToCopy: "💎・буст-сервера",
+                info: "💡 <strong>Назначение:</strong> Информация о наградах для тех, кто улучшает сервер бустами.",
+                body: `# 💎 БОНУСЫ ЗА БУСТ НАШЕГО СЕРВЕРА
+> Каждый участник, забустивший сервер, мгновенно получает:
+> 
+> ⭐ Эксклюзивную золотую роль @Server Booster
+> 🔊 Доступ в закрытый VIP-войс и закрытый текстовый чат
+> 🎨 Возможность установить персональный цвет ника
+> 👑 Огромный респект от администрации!`
+            },
+            general: {
+                title: "# 💬・общий-чат",
+                nameToCopy: "💬・общий-чат",
+                info: "💡 <strong>Назначение:</strong> Основное общение. Рекомендуем включить Slowmode (медленный режим) на 5 секунд.",
+                body: `# 💬 ГЛАВНЫЙ ЧАТ
+> Место для свободного общения, обсуждения игр и новых знакомств.
+> 
+> • Уважайте собеседников и соблюдайте правила.
+> • Для спама стикерами и мемов есть отдельные каналы!`
+            },
+            media: {
+                title: "# 📸・мемы-и-скриншоты",
+                nameToCopy: "📸・мемы-и-скриншоты",
+                info: "💡 <strong>Назначение:</strong> Канал для картинок и клипов. Убедитесь, что в правах разрешено «Прикрепление файлов».",
+                body: `# 📸 МЕМЫ И ИГРОВЫЕ СКРИНШОТЫ
+> Делитесь смешными мемами, своими хайлайтами из игр и красивыми скриншотами!`
+            },
+            bot_cmds: {
+                title: "# 🤖・команды-ботов",
+                nameToCopy: "🤖・команды-ботов",
+                info: "💡 <strong>Назначение:</strong> Все команды ботов отправляются сюда, чтобы не засорять общий чат.",
+                body: `# 🤖 ПАМЯТКА ПО КОМАНДАМ БОТОВ
+> 🎵 Музыкальный бот (Jockie Music):
+> • m!play [трек или ссылка] — включить музыку
+> • m!skip — пропустить трек
+> • m!stop — остановить воспроизведение
+> 
+> 📊 Проверка уровня (MEE6):
+> • !rank — ваш текущий уровень
+> • !levels — таблица лидеров сервера`
+            },
+            flood: {
+                title: "# 💭・флудилка",
+                nameToCopy: "💭・флудилка",
+                info: "💡 <strong>Назначение:</strong> Чат без ограничений для спама и быстрых переписок.",
+                body: `# 💭 ФЛУДИЛКА
+> Канал без медленного режима. Здесь можно спамить смайлами, стикерами и флудить на любые темы.`
+            },
+            lfg: {
+                title: "# 🔍・поиск-тимейтов",
+                nameToCopy: "🔍・поиск-тимейтов",
+                info: "💡 <strong>Назначение:</strong> Поиск пати. Закрепите этот шаблон сообщения в шапке канала.",
+                body: `# 🔍 ШАБЛОН ПОИСКА ТИМЕЙТОВ
+> Скопируйте и заполните анкету для поиска напарников:
+> 
+> 1. Игра: (CS2 / Dota 2 / Valorant / PUBG / Apex / другое)
+> 2. Ваш ранг / уровень:
+> 3. Время игры:
+> 4. Требования: (наличие микрофона, возраст, без тильта)`
+            },
+            cs_dota: {
+                title: "# 🎯・cs2-dota-pubg",
+                nameToCopy: "🎯・cs2-dota-pubg",
+                info: "💡 <strong>Назначение:</strong> Тематический чат для любителей соревновательных шутеров и MOBA.",
+                body: `# 🎯 ЗОНА CS2, DOTA 2 И PUBG
+> Обсуждаем турниры, киберспорт, новые патчи, сборки предметов и фишки раскидок!`
+            },
+            mine_roblox: {
+                title: "# ⛏️・minecraft-roblox",
+                nameToCopy: "⛏️・minecraft-roblox",
+                info: "💡 <strong>Назначение:</strong> Чат для фанатов песочниц, модов и совместных миров.",
+                body: `# ⛏️ MINECRAFT & ROBLOX
+> Делимся сидами миров, координатами баз, приватными серверами и кодами плейсов Roblox!`
+            },
+            voice_duo: {
+                title: "🔊 🎧・Дуо #1 (лимит: 2)",
+                nameToCopy: "🎧・Дуо #1 (лимит: 2)",
+                info: "💡 <strong>Настройки голосового канала:</strong> Лимит пользователей: <strong>2 человека</strong>. Битрейт: 64–96 kbps.",
+                body: `⚙️ РЕКОМЕНДУЕМЫЕ НАСТРОЙКИ ГОЛОСОВОГО КАНАЛА:
+• Название: 🎧・Дуо #1 (лимит: 2)
+• Лимит пользователей: 2 человека (чтобы никто третий не мешал игре в паре)
+• Битрейт: 96 kbps (высокое качество звука без лагов)`
+            },
+            voice_squad: {
+                title: "🔊 👥・Сквад #1 (лимит: 4)",
+                nameToCopy: "👥・Сквад #1 (лимит: 4)",
+                info: "💡 <strong>Настройки голосового канала:</strong> Лимит пользователей: <strong>4 человека</strong>. Идеально для PUBG, Squad, Warzone.",
+                body: `⚙️ РЕКОМЕНДУЕМЫЕ НАСТРОЙКИ ГОЛОСОВОГО КАНАЛА:
+• Название: 👥・Сквад #1 (лимит: 4)
+• Лимит пользователей: 4 человека
+• Битрейт: 96 kbps`
+            },
+            voice_afk: {
+                title: "🔊 💤・AFK Комната",
+                nameToCopy: "💤・AFK Комната",
+                info: "💡 <strong>Настройки:</strong> Назначьте этот канал в настройках сервера как официальный АФК-канал (время неактивности: 15 минут).",
+                body: `⚙️ РЕКОМЕНДУЕМЫЕ НАСТРОЙКИ АФК-КАНАЛА:
+• В настройках сервера (Обзор) укажите этот канал как "Канал для АФК"
+• Лимит времени неактивности: 15 минут
+• Права участников: Заглушить микрофон (автоматически)`
+            }
+        };
+
+        let currentChannelKey = 'rules';
+
+        function selectChannel(key, el) {
+            currentChannelKey = key;
+            const data = channelsData[key];
+            if (!data) return;
+
+            // Подсветка активного канала
+            document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            // Переключаем на вкладку канала
+            switchMainTab('channel');
+
+            // Обновляем правый блок
+            document.getElementById('currentTitle').innerText = data.title;
+            document.getElementById('channelInfo').innerHTML = data.info;
+            document.getElementById('channelBody').innerText = data.body;
+
+            // Копируем название канала в буфер
+            navigator.clipboard.writeText(data.nameToCopy).then(() => {
+                showToast('Название скопировано: ' + data.nameToCopy);
+            });
+        }
+
+        function copyCurrentTemplate() {
+            const data = channelsData[currentChannelKey];
+            if (!data) return;
+            navigator.clipboard.writeText(data.body).then(() => {
+                showToast('Текст сообщения скопирован в буфер!');
+            });
+        }
+
+        function switchMainTab(tab) {
+            document.getElementById('btnTabChannel').classList.remove('active');
+            document.getElementById('btnTabRoles').classList.remove('active');
+            document.getElementById('btnTabBots').classList.remove('active');
+
+            document.getElementById('viewChannel').style.display = 'none';
+            document.getElementById('viewRoles').style.display = 'none';
+            document.getElementById('viewBots').style.display = 'none';
+
+            if (tab === 'channel') {
+                document.getElementById('btnTabChannel').classList.add('active');
+                document.getElementById('viewChannel').style.display = 'block';
+            } else if (tab === 'roles') {
+                document.getElementById('btnTabRoles').classList.add('active');
+                document.getElementById('viewRoles').style.display = 'block';
+            } else if (tab === 'bots') {
+                document.getElementById('btnTabBots').classList.add('active');
+                document.getElementById('viewBots').style.display = 'block';
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2200);
+        }
+
+        // Инициализация при загрузке
+        selectChannel('rules', document.querySelector('.channel-item.active'));
+    </script>
+</body>
+</html>
